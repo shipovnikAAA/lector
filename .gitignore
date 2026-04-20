@@ -1,0 +1,6 @@
+.env
+qdrant_storage/
+
+# Added by cargo
+
+/target

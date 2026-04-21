@@ -61,14 +61,18 @@ async fn main() -> std::io::Result<()> {
     println!("Starting Lector server at http://{}:{}", host, port);
 
     HttpServer::new(move || {
-        let auth = HttpAuthentication::basic(auth::validator);
+        let auth = HttpAuthentication::bearer(auth::validator);
 
         App::new()
             .app_data(pool_data.clone())
             .app_data(rag_data.clone())
             .wrap(middleware::Logger::default())
-            .wrap(auth)
-            .configure(handlers::configure)
+            .configure(handlers::config_public)
+            .service(
+                web::scope("")
+                    .wrap(auth)
+                    .configure(handlers::config_private)
+            )
     })
     .bind(format!("{}:{}", host, port))?
     .run()

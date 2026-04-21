@@ -1,10 +1,16 @@
 pub mod ask;
+pub mod auth;
 pub mod chat;
 pub mod upload;
 
-use actix_web::web::{ServiceConfig, get, post, put, scope};
+use actix_web::web::{get, post, put, scope, ServiceConfig};
 
-pub fn configure(cfg: &mut ServiceConfig) {
+pub fn config_public(cfg: &mut ServiceConfig) {
+    cfg.route("/register", post().to(auth::register));
+    cfg.route("/login", post().to(auth::login));
+}
+
+pub fn config_private(cfg: &mut ServiceConfig) {
     cfg.service(
         scope("/upload")
             .route("", post().to(upload::handle_upload))

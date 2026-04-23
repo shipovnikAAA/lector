@@ -1,21 +1,23 @@
 use anyhow::{Result, anyhow};
 use qdrant_client::Payload;
 use qdrant_client::qdrant::QueryPoints;
-use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
+use qdrant_client::qdrant::{
+    CreateCollectionBuilder, Distance, PointStruct, UpsertPointsBuilder, VectorParamsBuilder,
+};
 use rig::agent::{Agent, AgentBuilder};
-use rig::client::CompletionClient;
-use rig::client::EmbeddingsClient;
 use rig::embeddings::EmbeddingsBuilder;
-use rig::providers::openai::Client;
-use rig::providers::openai::responses_api::ResponsesCompletionModel;
+use rig::providers::openai::CompletionModel;
+use rig::providers::openai::client::CompletionsClient;
+
+use rig_fastembed::{EmbeddingModel, FastembedModel};
 use rig_qdrant::QdrantVectorStore;
 use serde_json::json;
 use std::env;
 use uuid::Uuid;
 
 pub struct RagSystem {
-    pub model: ResponsesCompletionModel,
-    pub embeddings: rig::providers::openai::EmbeddingModel,
+    pub model: CompletionModel,
+    pub embeddings: EmbeddingModel,
     pub qdrant_client: qdrant_client::Qdrant,
     pub query_points: QueryPoints,
 }
@@ -23,17 +25,21 @@ pub struct RagSystem {
 impl RagSystem {
     pub async fn new() -> Result<Self> {
         let api_key = env::var("POLLINATIONS_API_KEY").unwrap_or_else(|_| "sk-dummy".to_string());
-        let base_url = "https://text.pollinations.ai/openai";
+        let base_url = "https://gen.pollinations.ai/v1";
         let model_name =
             env::var("POLLINATIONS_MODEL").unwrap_or_else(|_| "gemini-fast".to_string());
 
-        let client = Client::builder()
+        // Используем CompletionsClient вместо дефолтного
+        let client = CompletionsClient::builder()
             .api_key(&api_key)
             .base_url(base_url)
             .build()?;
 
-        let embeddings = client.embedding_model("text-embedding-ada-002");
-        let model = client.completion_model(&model_name);
+        let fastembed_client = rig_fastembed::Client::new();
+        let embeddings = fastembed_client.embedding_model(&FastembedModel::AllMiniLML6V2Q);
+
+        // Теперь типы клиента и модели совпадают идеально
+        let model = CompletionModel::new(client, model_name);
 
         let qdrant_url =
             env::var("QDRANT_URL").unwrap_or_else(|_| "http://localhost:6334".to_string());
@@ -47,6 +53,19 @@ impl RagSystem {
             ..Default::default()
         };
 
+        if !qdrant_client
+            .collection_exists(&query_points.collection_name)
+            .await?
+        {
+            qdrant_client
+                .create_collection(
+                    CreateCollectionBuilder::new(&query_points.collection_name)
+                        .vectors_config(VectorParamsBuilder::new(384, Distance::Cosine)),
+                )
+                .await
+                .map_err(|e| anyhow!("Failed to create Qdrant collection: {}", e))?;
+        }
+
         Ok(Self {
             model,
             embeddings,
@@ -55,7 +74,7 @@ impl RagSystem {
         })
     }
 
-    pub fn build_agent(&self) -> Agent<ResponsesCompletionModel> {
+    pub fn build_agent(&self) -> Agent<CompletionModel> {
         let vector_store = QdrantVectorStore::new(
             self.qdrant_client.clone(),
             self.embeddings.clone(),
@@ -63,13 +82,16 @@ impl RagSystem {
         );
 
         AgentBuilder::new(self.model.clone())
-            .preamble("You are Lector, a high-performance RAG agent. 
-You must answer questions ONLY using the provided context from textbooks. 
-If the answer is not in the context, response: 'Данных недостаточно. Я не могу ответить на этот вопрос, так как его нет в учебниках.'
-Do NOT use your own knowledge or hallucinate. Be precise and academic.")
+            .preamble("You are Lector, a polite, intelligent, and helpful academic assistant. 
+            Follow these rules strictly:
+            1. For greetings, pleasantries, or general small talk (like 'how are you?', 'hello'), respond politely and naturally in the language of the user.
+            2. For any factual, academic, or subject-related questions, you must answer ONLY using the provided context.
+            3. If a factual question cannot be answered using the provided context, politely reply: 'К сожалению, в моих материалах нет ответа на этот вопрос.'
+            Do NOT use your own knowledge for academic questions and do not hallucinate facts. Maintain a friendly but professional academic tone.")
             .dynamic_context(2, vector_store)
             .build()
     }
+
     pub async fn add_chunks(&self, chunks: Vec<String>) -> Result<()> {
         if chunks.is_empty() {
             return Ok(());
@@ -92,6 +114,7 @@ Do NOT use your own knowledge or hallucinate. Be precise and academic.")
                 )
             })
             .collect::<Vec<_>>();
+
         self.qdrant_client
             .upsert_points(UpsertPointsBuilder::new(
                 &self.query_points.collection_name,

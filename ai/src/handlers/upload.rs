@@ -3,7 +3,7 @@ use crate::db;
 use crate::rag::{RagSystem, chunk_text};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use serde::Deserialize;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Deserialize)]
 pub struct UploadRequest {
@@ -23,17 +23,19 @@ pub async fn handle_upload(
         .cloned()
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
 
-    let rec = sqlx::query!(
-        "INSERT INTO uploads (user_id, filename, content) VALUES ($1, $2, $3) RETURNING id",
-        user.id,
-        payload.filename,
-        payload.content
+    let rec = sqlx::query(
+        "INSERT INTO uploads (user_id, filename, content) VALUES ($1, $2, $3) RETURNING id"
     )
+    .bind(user.id)
+    .bind(&payload.filename)
+    .bind(&payload.content)
     .fetch_one(pool.get_ref())
     .await
     .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
-    let upload_id = rec.id;
+    let upload_id: uuid::Uuid = rec
+        .try_get("id")
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     let chunks = chunk_text(&payload.content, 1000, 200);
     rag.add_chunks(chunks).await.map_err(|e| {
@@ -75,12 +77,12 @@ pub async fn update_upload(
         .cloned()
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
 
-    sqlx::query!(
-        "UPDATE uploads SET content = $1 WHERE user_id = $2 AND filename = $3",
-        payload.content,
-        user.id,
-        payload.filename
+    sqlx::query(
+        "UPDATE uploads SET content = $1 WHERE user_id = $2 AND filename = $3"
     )
+    .bind(&payload.content)
+    .bind(user.id)
+    .bind(&payload.filename)
     .execute(pool.get_ref())
     .await
     .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;

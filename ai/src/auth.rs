@@ -2,7 +2,7 @@ use actix_web::HttpMessage;
 use actix_web::{Error, dev::ServiceRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use anyhow::{Result, anyhow};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 use std::str::FromStr;
 
@@ -35,20 +35,20 @@ pub async fn validator(
 async fn authenticate(pool: &PgPool, token_str: &str) -> Result<UserIdentity> {
     let token = Uuid::from_str(token_str).map_err(|_| anyhow!("Invalid token format"))?;
 
-    let user = sqlx::query!(
+    let user = sqlx::query(
         r#"
         SELECT id, username
         FROM users
         WHERE token = $1
-        "#,
-        token
+        "#
     )
+    .bind(token)
     .fetch_optional(pool)
     .await?
     .ok_or_else(|| anyhow!("User not found or invalid token"))?;
 
     Ok(UserIdentity {
-        id: user.id,
-        username: user.username,
+        id: user.try_get("id")?,
+        username: user.try_get("username")?,
     })
 }

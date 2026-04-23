@@ -1,13 +1,11 @@
-.next
 node_modules
-.env.local
+.next
 .env
-.idea
-.venv
+.env.*
+!.env.example
+target
+.fastembed_cache
 dist
-coverage
-npm-debug.log*
-qdrant_storage/
-
-# Added by cargo
-/target
+*.log
+.DS_Store
+.antigravity

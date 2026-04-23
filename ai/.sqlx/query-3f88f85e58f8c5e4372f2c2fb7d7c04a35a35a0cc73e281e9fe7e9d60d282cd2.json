@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE uploads SET content = $1 WHERE user_id = $2 AND filename = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3f88f85e58f8c5e4372f2c2fb7d7c04a35a35a0cc73e281e9fe7e9d60d282cd2"
+}

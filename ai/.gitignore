@@ -1,2 +1,5 @@
 /target
 /.fastembed_cache
+.env
+.env.*
+!.env.example

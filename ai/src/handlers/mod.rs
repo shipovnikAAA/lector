@@ -27,6 +27,7 @@ pub fn config_private(cfg: &mut ServiceConfig) {
         scope("/chat")
             .wrap(auth_mw.clone())
             .route("", get().to(chat::list_chats))
+            .route("/{chat_id}/messages", get().to(chat::get_chat_messages))
             .route("", put().to(chat::update_chat)),
     );
     cfg.service(

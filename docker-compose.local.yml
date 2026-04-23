@@ -21,7 +21,7 @@ services:
       - "6337:6333"
       - "6338:6334"
     volumes:
-      - qdrant_storage:/qdrant/storage:z
+      - qdrant_storage:/qdrant/storage
     healthcheck:
       test: [ "CMD", "./qdrant", "--version" ]
       interval: 5s
@@ -47,7 +47,7 @@ services:
 
       # LLM Provider (Pollinations)
       POLLINATIONS_API_KEY: ${POLLINATIONS_API_KEY}
-      POLLINATIONS_MODEL: ${POLLINATIONS_MODEL:-gemini-fast}
+      POLLINATIONS_MODEL: ${POLLINATIONS_MODEL:-openai}
 
       # App Settings
       PORT: ${PORT:-6969}

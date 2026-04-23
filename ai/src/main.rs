@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let admin_exists = sqlx::query!("SELECT id FROM users WHERE username = 'admin'")
+    let admin_exists = sqlx::query("SELECT id FROM users WHERE username = 'admin'")
         .fetch_optional(&pool)
         .await
         .expect("Failed to check for admin user")
@@ -37,10 +37,10 @@ async fn main() -> std::io::Result<()> {
 
     if !admin_exists {
         let hashed_password = bcrypt::hash("admin", 10).expect("Failed to hash password");
-        sqlx::query!(
-            "INSERT INTO users (username, password_hash) VALUES ('admin', $1)",
-            hashed_password
+        sqlx::query(
+            "INSERT INTO users (username, password_hash) VALUES ('admin', $1)"
         )
+        .bind(hashed_password)
         .execute(&pool)
         .await
         .expect("Failed to seed admin user");

@@ -18,6 +18,7 @@ pub struct Message {
     pub chat_id: Uuid,
     pub role: String,
     pub content: String,
+    pub image_url: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
 }
 
@@ -55,7 +56,7 @@ pub async fn list_uploads(pool: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Up
 pub async fn get_chat_history(pool: &PgPool, chat_id: Uuid) -> anyhow::Result<Vec<Message>> {
     let messages = sqlx::query_as!(
         Message,
-        r#"SELECT id as "id!", chat_id as "chat_id!", role as "role!", content as "content!", created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC"#,
+        r#"SELECT id as "id!", chat_id as "chat_id!", role as "role!", content as "content!", image_url, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC"#,
         chat_id
     )
     .fetch_all(pool)

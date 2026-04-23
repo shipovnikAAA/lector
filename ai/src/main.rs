@@ -5,7 +5,6 @@ mod rag;
 
 use crate::rag::RagSystem;
 use actix_web::{App, HttpServer, middleware, web};
-use actix_web_httpauth::middleware::HttpAuthentication;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 
@@ -61,18 +60,12 @@ async fn main() -> std::io::Result<()> {
     println!("Starting Lector server at http://{}:{}", host, port);
 
     HttpServer::new(move || {
-        let auth = HttpAuthentication::bearer(auth::validator);
-
         App::new()
             .app_data(pool_data.clone())
             .app_data(rag_data.clone())
             .wrap(middleware::Logger::default())
             .configure(handlers::config_public)
-            .service(
-                web::scope("")
-                    .wrap(auth)
-                    .configure(handlers::config_private)
-            )
+            .configure(handlers::config_private)
     })
     .bind(format!("{}:{}", host, port))?
     .run()

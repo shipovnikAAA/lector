@@ -1,5 +1,4 @@
 use crate::auth::UserIdentity;
-use crate::db;
 use crate::rag::RagSystem;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use rig::completion::Prompt;
@@ -11,6 +10,7 @@ use uuid::Uuid;
 pub struct AskRequest {
     pub chat_id: Option<Uuid>,
     pub question: String,
+    pub image_url: Option<String>,
 }
 
 pub async fn handle_ask(
@@ -47,10 +47,11 @@ pub async fn handle_ask(
     };
 
     sqlx::query!(
-        "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
+        "INSERT INTO messages (chat_id, role, content, image_url) VALUES ($1, $2, $3, $4)",
         chat_id,
         "user",
-        payload.question
+        payload.question,
+        payload.image_url
     )
     .execute(pool.get_ref())
     .await
@@ -58,7 +59,13 @@ pub async fn handle_ask(
 
     let agent = rag.build_agent();
 
-    let response = agent.prompt(&payload.question).await.map_err(|e| {
+    let prompt = if let Some(ref url) = payload.image_url {
+        format!("Question: {}\nAttached Image: {}", payload.question, url)
+    } else {
+        payload.question.clone()
+    };
+
+    let response = agent.prompt(&prompt).await.map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("AI prompt failed: {}", e))
     })?;
 

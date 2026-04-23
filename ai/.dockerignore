@@ -1,0 +1,14 @@
+**/target
+target/
+
+.git
+.gitignore
+.env
+
+.dockerignore
+
+**/.DS_Store
+**/Thumbs.db
+**/*.exe
+**/*.pdb
+**/*.dll

@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_DB: ${DB_NAME:-ssiss}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -18,12 +18,12 @@ services:
     image: qdrant/qdrant:latest
     restart: always
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "6337:6333"
+      - "6338:6334"
     volumes:
       - qdrant_storage:/qdrant/storage:z
     healthcheck:
-      test: ["CMD", "./qdrant", "--version"]
+      test: [ "CMD", "./qdrant", "--version" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -41,18 +41,27 @@ services:
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-psql}@pg-dev:5432/${DB_NAME:-ssiss}
-      
+
       # Vector Store
       QDRANT_URL: http://qdrant-dev:6334
-      
+
       # LLM Provider (Pollinations)
       POLLINATIONS_API_KEY: ${POLLINATIONS_API_KEY}
       POLLINATIONS_MODEL: ${POLLINATIONS_MODEL:-gemini-fast}
-      
+
       # App Settings
       PORT: ${PORT:-6969}
       HOST: ${HOST:-0.0.0.0}
       DEBUG: ${DEBUG:-True}
+  # cloudflare-tunnel:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: lector-tunnel
+  #   restart: always
+  #   command: tunnel --url http://lector-ai:${PORT:-6969}
+  #   depends_on:
+  #     - lector-ai
+  #   # environment:
+  #   #   TUNNEL_TOKEN: ${TUNNEL_TOKEN}
 
 volumes:
   qdrant_storage:

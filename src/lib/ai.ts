@@ -27,6 +27,14 @@ type AskResponse = {
   answer: string;
 };
 
+export type Formula = {
+  id: string;
+  grade: number;
+  name: string;
+  equation: string;
+  description: string | null;
+};
+
 function getAiBaseUrl() {
   return process.env.LECTOR_AI_URL?.trim() || DEFAULT_AI_URL;
 }
@@ -158,4 +166,54 @@ export async function askAi(question: string, chatId?: string | null) {
   }
 
   return (await response.json()) as AskResponse;
+}
+
+export async function listFormulas(grade?: number) {
+  const token = await ensureAiToken();
+  const query = grade ? `?grade=${grade}` : "";
+  const response = await aiFetch(`/formulas${query}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    method: "GET"
+  });
+
+  if (!response.ok) {
+    throw new Error(await readAiError(response));
+  }
+
+  return (await response.json()) as Formula[];
+}
+
+export async function addFormula(formula: Omit<Formula, "id">) {
+  const token = await ensureAiToken();
+  const response = await aiFetch("/formulas", {
+    body: JSON.stringify(formula),
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    throw new Error(await readAiError(response));
+  }
+
+  return (await response.json()) as { id: string };
+}
+
+export async function deleteFormula(id: string) {
+  const token = await ensureAiToken();
+  const response = await aiFetch(`/formulas/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    method: "DELETE"
+  });
+
+  if (!response.ok) {
+    throw new Error(await readAiError(response));
+  }
+
+  return (await response.json()) as { status: string };
 }

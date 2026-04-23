@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Rubik } from "next/font/google";
 
 import "./globals.css";
+import "katex/dist/katex.min.css";
 
 const rubik = Rubik({
   subsets: ["latin", "cyrillic"],

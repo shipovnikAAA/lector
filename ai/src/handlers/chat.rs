@@ -1,9 +1,9 @@
-use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use crate::auth::UserIdentity;
+use crate::db;
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::db;
-use crate::auth::UserIdentity;
 
 #[derive(Deserialize)]
 pub struct ChatUpdateRequest {
@@ -16,13 +16,15 @@ pub async fn list_chats(
     pool: web::Data<PgPool>,
     req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
-    let user = req.extensions().get::<UserIdentity>().cloned().ok_or_else(|| {
-        actix_web::error::ErrorUnauthorized("Unauthorized")
-    })?;
+    let user = req
+        .extensions()
+        .get::<UserIdentity>()
+        .cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
 
-    let chats = db::list_chats(pool.get_ref(), user.id).await.map_err(|e| {
-        actix_web::error::ErrorInternalServerError(e)
-    })?;
+    let chats = db::list_chats(pool.get_ref(), user.id)
+        .await
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     Ok(HttpResponse::Ok().json(chats))
 }
@@ -32,17 +34,21 @@ pub async fn get_chat_messages(
     req: HttpRequest,
     chat_id: web::Path<Uuid>,
 ) -> actix_web::Result<impl Responder> {
-    let user = req.extensions().get::<UserIdentity>().cloned().ok_or_else(|| {
-        actix_web::error::ErrorUnauthorized("Unauthorized")
-    })?;
+    let user = req
+        .extensions()
+        .get::<UserIdentity>()
+        .cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
 
     let chat_id = chat_id.into_inner();
 
-    let chat = sqlx::query(
-        "SELECT id FROM chats WHERE id = $1 AND user_id = $2"
+    let chat = sqlx::query!(
+        r#"
+        SELECT id FROM chats WHERE id = $1 AND user_id = $2
+        "#,
+        chat_id,
+        user.id
     )
-    .bind(chat_id)
-    .bind(user.id)
     .fetch_optional(pool.get_ref())
     .await
     .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
@@ -63,29 +69,35 @@ pub async fn update_chat(
     req: HttpRequest,
     payload: web::Json<ChatUpdateRequest>,
 ) -> actix_web::Result<impl Responder> {
-    let user = req.extensions().get::<UserIdentity>().cloned().ok_or_else(|| {
-        actix_web::error::ErrorUnauthorized("Unauthorized")
-    })?;
+    let user = req
+        .extensions()
+        .get::<UserIdentity>()
+        .cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
 
     if let Some(name) = &payload.name {
-        sqlx::query(
-            "UPDATE chats SET name = $1 WHERE id = $2 AND user_id = $3"
+        sqlx::query!(
+            r#"
+            UPDATE chats SET name = $1 WHERE id = $2 AND user_id = $3
+            "#,
+            name,
+            payload.id,
+            user.id
         )
-        .bind(name)
-        .bind(payload.id)
-        .bind(user.id)
         .execute(pool.get_ref())
         .await
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
     }
 
     if let Some(is_pinned) = payload.is_pinned {
-        sqlx::query(
-            "UPDATE chats SET is_pinned = $1 WHERE id = $2 AND user_id = $3"
+        sqlx::query!(
+            r#"
+            UPDATE chats SET is_pinned = $1 WHERE id = $2 AND user_id = $3
+            "#,
+            is_pinned,
+            payload.id,
+            user.id
         )
-        .bind(is_pinned)
-        .bind(payload.id)
-        .bind(user.id)
         .execute(pool.get_ref())
         .await
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;

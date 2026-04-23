@@ -124,6 +124,83 @@ impl RagSystem {
 
         Ok(())
     }
+
+    pub async fn index_formula(
+        &self,
+        id: Uuid,
+        name: &str,
+        equation: &str,
+        description: Option<&str>,
+    ) -> Result<()> {
+        let content = format!(
+            "Физическая формула: {}\nУравнение: {}\nОписание: {}",
+            name,
+            equation,
+            description.unwrap_or("нет описания")
+        );
+
+        let embeddings = EmbeddingsBuilder::new(self.embeddings.clone())
+            .document(content.clone())?
+            .build()
+            .await?;
+
+        if let Some((doc, vec)) = embeddings.into_iter().next() {
+            let float_vec: Vec<f32> = vec.first().vec.iter().map(|&x| x as f32).collect();
+
+            let point = PointStruct::new(
+                id.to_string(),
+                float_vec,
+                Payload::try_from(json!({
+                    "document": doc,
+                    "type": "formula",
+                    "formula_id": id.to_string()
+                }))
+                .unwrap(),
+            );
+
+            self.qdrant_client
+                .upsert_points(UpsertPointsBuilder::new(
+                    &self.query_points.collection_name,
+                    vec![point],
+                ))
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn sync_all_formulas(&self, pool: &sqlx::PgPool) -> Result<()> {
+        let formulas = sqlx::query_as!(
+            crate::db::Formula,
+            "SELECT id, grade, name, equation, description FROM formulas"
+        )
+        .fetch_all(pool)
+        .await?;
+
+        for formula in formulas {
+            self.index_formula(
+                formula.id,
+                &formula.name,
+                &formula.equation,
+                formula.description.as_deref(),
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_formula(&self, id: Uuid) -> Result<()> {
+        use qdrant_client::qdrant::{DeletePointsBuilder, PointId};
+
+        self.qdrant_client
+            .delete_points(
+                DeletePointsBuilder::new(&self.query_points.collection_name)
+                    .points(vec![PointId::from(id.to_string())]),
+            )
+            .await?;
+        Ok(())
+    }
 }
 
 pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {

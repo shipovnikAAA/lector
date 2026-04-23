@@ -4,13 +4,20 @@ mod handlers;
 mod rag;
 
 use crate::rag::RagSystem;
+use actix_files::Files;
 use actix_web::{App, HttpServer, middleware, web};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
+use std::fs;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
+
+    // Создаем папку для загрузок, если её нет
+    if let Err(e) = fs::create_dir_all("./uploads") {
+        eprintln!("Failed to create uploads directory: {}", e);
+    }
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
@@ -29,7 +36,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let admin_exists = sqlx::query("SELECT id FROM users WHERE username = 'admin'")
+    let admin_exists = sqlx::query!("SELECT id FROM users WHERE username = 'admin'")
         .fetch_optional(&pool)
         .await
         .expect("Failed to check for admin user")
@@ -37,10 +44,12 @@ async fn main() -> std::io::Result<()> {
 
     if !admin_exists {
         let hashed_password = bcrypt::hash("admin", 10).expect("Failed to hash password");
-        sqlx::query(
-            "INSERT INTO users (username, password_hash) VALUES ('admin', $1)"
+        sqlx::query!(
+            r#"
+            INSERT INTO users (username, password_hash) VALUES ('admin', $1)
+            "#,
+            hashed_password
         )
-        .bind(hashed_password)
         .execute(&pool)
         .await
         .expect("Failed to seed admin user");
@@ -50,6 +59,10 @@ async fn main() -> std::io::Result<()> {
     let rag = RagSystem::new()
         .await
         .expect("Failed to initialize RAG system");
+
+    rag.sync_all_formulas(&pool)
+        .await
+        .expect("Failed to sync formulas to RAG");
 
     let pool_data = web::Data::new(pool);
     let rag_data = web::Data::new(rag);
@@ -64,6 +77,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(pool_data.clone())
             .app_data(rag_data.clone())
             .wrap(middleware::Logger::default())
+            .service(Files::new("/uploads", "./uploads").show_files_listing())
             .configure(handlers::config_public)
             .configure(handlers::config_private)
     })

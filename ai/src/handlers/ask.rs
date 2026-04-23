@@ -28,32 +28,31 @@ pub async fn handle_ask(
     let chat_id = match payload.chat_id {
         Some(id) => id,
         None => {
-            let name = if payload.question.len() > 30 {
-                format!("{}...", &payload.question[..27])
+            let name = if payload.question.chars().count() > 30 {
+                format!("{}...", payload.question.chars().take(27).collect::<String>())
             } else {
                 payload.question.clone()
             };
-            let rec = sqlx::query(
-                "INSERT INTO chats (user_id, name) VALUES ($1, $2) RETURNING id"
+            let rec = sqlx::query!(
+                "INSERT INTO chats (user_id, name) VALUES ($1, $2) RETURNING id",
+                user.id,
+                name
             )
-            .bind(user.id)
-            .bind(name)
             .fetch_one(pool.get_ref())
             .await
             .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
-            rec.try_get("id")
-                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?
+            rec.id
         }
     };
 
-    sqlx::query(
-        "INSERT INTO messages (chat_id, role, content, image_url) VALUES ($1, $2, $3, $4)"
+    sqlx::query!(
+        "INSERT INTO messages (chat_id, role, content, image_url) VALUES ($1, $2, $3, $4)",
+        chat_id,
+        "user",
+        payload.question,
+        payload.image_url
     )
-    .bind(chat_id)
-    .bind("user")
-    .bind(&payload.question)
-    .bind(&payload.image_url)
     .execute(pool.get_ref())
     .await
     .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
@@ -61,7 +60,10 @@ pub async fn handle_ask(
     let agent = rag.build_agent();
 
     let prompt = if let Some(ref url) = payload.image_url {
-        format!("Question: {}\nAttached Image: {}", payload.question, url)
+        format!(
+            "Вопрос: {}\nПрикрепленное изображение: {}",
+            payload.question, url
+        )
     } else {
         payload.question.clone()
     };
@@ -70,12 +72,12 @@ pub async fn handle_ask(
         actix_web::error::ErrorInternalServerError(format!("AI prompt failed: {}", e))
     })?;
 
-    sqlx::query(
-        "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)"
+    sqlx::query!(
+        "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
+        chat_id,
+        "assistant",
+        response
     )
-    .bind(chat_id)
-    .bind("assistant")
-    .bind(&response)
     .execute(pool.get_ref())
     .await
     .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;

@@ -58,15 +58,36 @@ services:
       PORT: ${PORT:-6969}
       HOST: ${HOST:-0.0.0.0}
       DEBUG: ${DEBUG:-True}
-  # cloudflare-tunnel:
-  #   image: cloudflare/cloudflared:latest
-  #   container_name: lector-tunnel
-  #   restart: always
-  #   command: tunnel --url http://lector-ai:${PORT:-6969}
-  #   depends_on:
-  #     - lector-ai
-  #   # environment:
-  #   #   TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://lector-ai:${PORT:-6969}/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  lector-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    depends_on:
+      lector-ai:
+        condition: service_healthy
+    environment:
+      LECTOR_AI_URL: http://lector-ai:${PORT:-6969}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      LECTOR_AI_SHARED_SECRET: ${LECTOR_AI_SHARED_SECRET:-change-me}
+
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: lector-tunnel
+    restart: always
+    command: tunnel --url http://lector-web:3000
+    # environment:
+    #   TUNNEL_TOKEN: ${TUNNEL_TOKEN}
 
 volumes:
   qdrant_storage:

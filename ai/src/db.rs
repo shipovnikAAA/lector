@@ -1,7 +1,7 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Chat {
@@ -31,32 +31,67 @@ pub struct Upload {
     pub created_at: Option<DateTime<Utc>>,
 }
 
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Formula {
+    pub id: Uuid,
+    pub grade: i32,
+    pub name: String,
+    pub equation: String,
+    pub description: Option<String>,
+}
+
 pub async fn list_chats(pool: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Chat>> {
-    let chats = sqlx::query_as::<_, Chat>(
-        r#"SELECT id, user_id, name, is_pinned, created_at FROM chats WHERE user_id = $1 ORDER BY is_pinned DESC, created_at DESC"#
+    let chats = sqlx::query_as!(
+        Chat,
+        r#"SELECT id as "id!", user_id as "user_id!", name as "name!", is_pinned as "is_pinned!", created_at FROM chats WHERE user_id = $1 ORDER BY is_pinned DESC, created_at DESC"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await?;
     Ok(chats)
 }
 
 pub async fn list_uploads(pool: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Upload>> {
-    let uploads = sqlx::query_as::<_, Upload>(
-        r#"SELECT id, user_id, filename, content, created_at FROM uploads WHERE user_id = $1 ORDER BY created_at DESC"#
+    let uploads = sqlx::query_as!(
+        Upload,
+        r#"SELECT id as "id!", user_id as "user_id!", filename as "filename!", content as "content!", created_at FROM uploads WHERE user_id = $1 ORDER BY created_at DESC"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await?;
     Ok(uploads)
 }
 
 pub async fn get_chat_history(pool: &PgPool, chat_id: Uuid) -> anyhow::Result<Vec<Message>> {
-    let messages = sqlx::query_as::<_, Message>(
-        r#"SELECT id, chat_id, role, content, image_url, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC"#
+    let messages = sqlx::query_as!(
+        Message,
+        r#"SELECT id as "id!", chat_id as "chat_id!", role as "role!", content as "content!", image_url, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC"#,
+        chat_id
     )
-    .bind(chat_id)
     .fetch_all(pool)
     .await?;
     Ok(messages)
+}
+
+pub async fn list_formulas(pool: &PgPool, grade: Option<i32>) -> anyhow::Result<Vec<Formula>> {
+    let formulas = match grade {
+        Some(g) => {
+            sqlx::query_as!(
+                Formula,
+                r#"SELECT id, grade, name, equation, description FROM formulas WHERE grade = $1"#,
+                g
+            )
+            .fetch_all(pool)
+            .await?
+        }
+        None => {
+            sqlx::query_as!(
+                Formula,
+                r#"SELECT id, grade, name, equation, description FROM formulas"#
+            )
+            .fetch_all(pool)
+            .await?
+        }
+    };
+    Ok(formulas)
 }

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -136,6 +137,20 @@ export default async function DashboardPage({
                 <span className="account-value">{profile.email ?? "Не указана"}</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="account-card">
+          <div className="eyebrow">Обучение</div>
+          <h2 className="account-section-title">Библиотека формул</h2>
+          <p className="section-text">
+            Просматривайте, добавляйте и удаляйте формулы для 9 и 10 классов. 
+            Ваш персональный справочник для решения задач.
+          </p>
+          <div style={{ marginTop: '20px' }}>
+            <Link className="button primary-button" href="/formulas" style={{ display: 'inline-block' }}>
+              Перейти к формулам
+            </Link>
           </div>
         </div>
 

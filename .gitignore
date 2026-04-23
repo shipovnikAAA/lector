@@ -1,6 +1,13 @@
+.next
+node_modules
+.env.local
 .env
+.idea
+.venv
+dist
+coverage
+npm-debug.log*
 qdrant_storage/
 
 # Added by cargo
-
 /target

@@ -1,0 +1,103 @@
+services:
+  pg-dev:
+    image: postgres:17
+    restart: always
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-psql}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_DB: ${DB_NAME:-ssiss}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant-dev:
+    image: qdrant/qdrant:latest
+    restart: always
+    ports:
+      - "6337:6333"
+      - "6338:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: [ "CMD", "./qdrant", "--version" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  lector-ai:
+    build:
+      context: ./ai
+    restart: always
+    ports:
+      - "${PORT:-6969}:${PORT:-6969}"
+    volumes:
+      - fastembed_cache:/root/.cache
+    depends_on:
+      pg-dev:
+        condition: service_healthy
+      qdrant-dev:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-psql}@pg-dev:5432/${DB_NAME:-ssiss}
+
+      # Vector Store
+      QDRANT_URL: http://qdrant-dev:6334
+
+      # LLM Provider (Pollinations)
+      POLLINATIONS_API_KEY: ${POLLINATIONS_API_KEY}
+      POLLINATIONS_MODEL: ${POLLINATIONS_MODEL:-openai}
+
+      # App Settings
+      PORT: ${PORT:-6969}
+      HOST: ${HOST:-0.0.0.0}
+      DEBUG: ${DEBUG:-True}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://lector-ai:${PORT:-6969}/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  lector-web:
+    build:
+      context: ./frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      lector-ai:
+        condition: service_healthy
+    environment:
+      LECTOR_AI_URL: http://lector-ai:${PORT:-6969}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      LECTOR_AI_SHARED_SECRET: ${LECTOR_AI_SHARED_SECRET:-change-me}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  # cloudflare-tunnel:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: lector-tunnel
+  #   restart: always
+  #   depends_on:
+  #     lector-web:
+  #       condition: service_healthy
+  #   command: tunnel --protocol quic --no-autoupdate --url http://lector-web:3000
+  #   # environment:
+  #   #   TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+
+volumes:
+  qdrant_storage:
+  postgres_data:
+  fastembed_cache:

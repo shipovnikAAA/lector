@@ -99,6 +99,7 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const chatWindowRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -248,6 +249,7 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
 
   async function handleSelectChat(chatId: string) {
     setSelectedChatId(chatId);
+    setIsSidebarOpen(false); // Close sidebar on mobile after selection
 
     if (!messagesByChat[chatId]) {
       await loadMessages(chatId);
@@ -420,25 +422,42 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
 
   return (
-    <section className="chat-shell">
-      <aside className="chat-sidebar">
+    <section className={`chat-shell ${isSidebarOpen ? "sidebar-visible" : ""}`}>
+      {isSidebarOpen && (
+        <div 
+          className="mobile-backdrop" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <aside className={`chat-sidebar ${isSidebarOpen ? "sidebar-active" : ""}`}>
         <div className="sidebar-card">
           <div className="sidebar-head">
             <div>
               <div className="eyebrow">История</div>
               <h2 className="sidebar-title">Мои чаты</h2>
             </div>
-            <button
-              className="primary-button compact-button"
-              onClick={() => {
-                setSelectedChatId(null);
-                setDraft("");
-                setError(null);
-              }}
-              type="button"
-            >
-              Новый чат
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                className="primary-button compact-button"
+                onClick={() => {
+                  setSelectedChatId(null);
+                  setDraft("");
+                  setError(null);
+                  setIsSidebarOpen(false);
+                }}
+                type="button"
+              >
+                Новый
+              </button>
+              <button
+                className="ghost-button compact-button mobile-only"
+                onClick={() => setIsSidebarOpen(false)}
+                type="button"
+              >
+                &times;
+              </button>
+            </div>
           </div>
 
           <div className="chat-history-list">
@@ -474,6 +493,33 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
         </div>
 
         <div className="sidebar-card">
+          <div className="eyebrow">Навигация</div>
+          <div className="action-stack" style={{ marginTop: '12px' }}>
+            <button 
+              className="ghost-button action-button" 
+              onClick={() => window.location.href = '/'}
+              type="button"
+            >
+              🏠 Главная
+            </button>
+            <button 
+              className="ghost-button action-button" 
+              onClick={() => window.location.href = '/formulas'}
+              type="button"
+            >
+              📚 Формулы
+            </button>
+            <button 
+              className="ghost-button action-button" 
+              onClick={() => window.location.href = '/dashboard'}
+              type="button"
+            >
+              👤 Кабинет
+            </button>
+          </div>
+        </div>
+
+        <div className="sidebar-card">
           <div className="eyebrow">Профиль</div>
           <div className="profile-strip">
             <div className="profile-strip-meta">
@@ -486,11 +532,20 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
 
       <div className="chat-main">
         <div className="chat-topbar">
-          <div>
-            <div className="eyebrow">Текущий диалог</div>
-            <h1 className="chat-title">
-              {selectedChat?.name ?? "Новый диалог"}
-            </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              className="ghost-button compact-button mobile-only" 
+              onClick={() => setIsSidebarOpen(true)}
+              style={{ minHeight: '42px', width: '42px', padding: 0 }}
+            >
+              ☰
+            </button>
+            <div>
+              <div className="eyebrow">Текущий диалог</div>
+              <h1 className="chat-title">
+                {selectedChat?.name ?? "Новый диалог"}
+              </h1>
+            </div>
           </div>
           <div className="chat-tools">
             {tools.map((tool) => (

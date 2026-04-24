@@ -19,7 +19,7 @@ export default async function ChatPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-shell-fixed">
       <Header />
       <ChatWorkspace userName={profile.full_name ?? profile.email ?? "Пользователь"} />
     </main>

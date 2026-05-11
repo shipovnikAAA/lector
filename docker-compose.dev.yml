@@ -68,18 +68,20 @@ services:
   lector-web:
     build:
       context: ./frontend
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - ./frontend/.env.local
     depends_on:
       lector-ai:
         condition: service_healthy
     environment:
       LECTOR_AI_URL: http://lector-ai:${PORT:-6969}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-      LECTOR_AI_SHARED_SECRET: ${LECTOR_AI_SHARED_SECRET:-change-me}
       HOSTNAME: "0.0.0.0"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3000/" ]

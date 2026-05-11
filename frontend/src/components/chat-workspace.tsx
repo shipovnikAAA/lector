@@ -424,8 +424,8 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
   return (
     <section className={`chat-shell ${isSidebarOpen ? "sidebar-visible" : ""}`}>
       {isSidebarOpen && (
-        <div 
-          className="mobile-backdrop" 
+        <div
+          className="mobile-backdrop"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -492,32 +492,6 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
           </div>
         </div>
 
-        <div className="sidebar-card">
-          <div className="eyebrow">Навигация</div>
-          <div className="action-stack" style={{ marginTop: '12px' }}>
-            <button 
-              className="ghost-button action-button" 
-              onClick={() => window.location.href = '/'}
-              type="button"
-            >
-              🏠 Главная
-            </button>
-            <button 
-              className="ghost-button action-button" 
-              onClick={() => window.location.href = '/formulas'}
-              type="button"
-            >
-              📚 Формулы
-            </button>
-            <button 
-              className="ghost-button action-button" 
-              onClick={() => window.location.href = '/dashboard'}
-              type="button"
-            >
-              👤 Кабинет
-            </button>
-          </div>
-        </div>
 
         <div className="sidebar-card">
           <div className="eyebrow">Профиль</div>
@@ -533,8 +507,8 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
       <div className="chat-main">
         <div className="chat-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button 
-              className="ghost-button compact-button mobile-only" 
+            <button
+              className="ghost-button compact-button mobile-only"
               onClick={() => setIsSidebarOpen(true)}
               style={{ minHeight: '42px', width: '42px', padding: 0 }}
             >
@@ -653,11 +627,11 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="ghost-button compact-button">
                   📷 Фото
                 </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  style={{ display: 'none' }} 
-                  accept="image/*" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  accept="image/*"
                   onChange={handleImageChange}
                 />
               </div>

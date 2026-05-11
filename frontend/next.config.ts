@@ -11,10 +11,15 @@ const nextConfig: NextConfig = {
     ]
   },
   async rewrites() {
+    const lectorAiUrl = process.env.LECTOR_AI_URL || "http://127.0.0.1:6969";
     return [
       {
         source: "/api/:path*",
-        destination: `${process.env.LECTOR_AI_URL || "http://127.0.0.1:6969"}/:path*`
+        destination: `${lectorAiUrl}/:path*`
+      },
+      {
+        source: "/uploads/:path*",
+        destination: `${lectorAiUrl}/uploads/:path*`
       }
     ];
   }

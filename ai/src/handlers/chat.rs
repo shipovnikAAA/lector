@@ -105,3 +105,4 @@ pub async fn update_chat(
 
     Ok(HttpResponse::Ok().json(serde_json::json!({ "status": "updated" })))
 }
+

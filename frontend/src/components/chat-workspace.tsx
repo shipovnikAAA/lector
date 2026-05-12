@@ -89,7 +89,9 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [loadingChats, setLoadingChats] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState<
+    Record<string, boolean>
+  >({});
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectedChatIdRef = useRef<string | null>(null);
@@ -137,7 +139,8 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
   );
 
   const loadMessages = useCallback(async (chatId: string) => {
-    setLoadingMessages(true);
+    setLoadingMessages((current) => ({ ...current, [chatId]: true }));
+    setError(null);
 
     try {
       const response = await fetch(
@@ -166,7 +169,7 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
           : "Не удалось загрузить сообщения.",
       );
     } finally {
-      setLoadingMessages(false);
+      setLoadingMessages((current) => ({ ...current, [chatId]: false }));
     }
   }, []);
 
@@ -176,7 +179,9 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
         return;
       }
 
-      const accepted = window.confirm("Удалить этот чат? Сообщения тоже удалятся.");
+      const accepted = window.confirm(
+        "Удалить этот чат? Сообщения тоже удалятся.",
+      );
       if (!accepted) {
         return;
       }
@@ -225,7 +230,9 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
         }
       } catch (deleteError) {
         setError(
-          deleteError instanceof Error ? deleteError.message : "Не удалось удалить чат.",
+          deleteError instanceof Error
+            ? deleteError.message
+            : "Не удалось удалить чат.",
         );
       }
     },
@@ -253,19 +260,29 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
         const nextChats = payload.chats ?? [];
         setChats(nextChats);
 
+        const lastChatId =
+          typeof window !== "undefined"
+            ? localStorage.getItem("lector_last_chat_id")
+            : null;
         const nextSelectedChatId =
           preferredChatId &&
           nextChats.some((chat) => chat.id === preferredChatId)
             ? preferredChatId
-            : selectedChatIdRef.current &&
-                nextChats.some((chat) => chat.id === selectedChatIdRef.current)
-              ? selectedChatIdRef.current
-              : (nextChats[0]?.id ?? null);
+            : lastChatId && nextChats.some((chat) => chat.id === lastChatId)
+              ? lastChatId
+              : selectedChatIdRef.current &&
+                  nextChats.some(
+                    (chat) => chat.id === selectedChatIdRef.current,
+                  )
+                ? selectedChatIdRef.current
+                : (nextChats[0]?.id ?? null);
 
         setSelectedChatId(nextSelectedChatId);
 
-        if (nextSelectedChatId) {
-          await loadMessages(nextSelectedChatId);
+        // Загружаем сообщения для всех чатов сразу, чтобы заполнить превью в сайдбаре
+        // Используем Promise.all для параллельной загрузки
+        if (nextChats.length > 0) {
+          void Promise.all(nextChats.map((chat) => loadMessages(chat.id)));
         }
       } catch (loadError) {
         setError(
@@ -286,6 +303,11 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
 
   useEffect(() => {
     selectedChatIdRef.current = selectedChatId;
+    if (selectedChatId && !selectedChatId.startsWith("pending-")) {
+      localStorage.setItem("lector_last_chat_id", selectedChatId);
+    } else if (!selectedChatId) {
+      localStorage.removeItem("lector_last_chat_id");
+    }
   }, [selectedChatId]);
 
   const selectedMessages = useMemo(() => {
@@ -496,14 +518,16 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
         />
       )}
 
-      <aside className={`chat-sidebar ${isSidebarOpen ? "sidebar-active" : ""}`}>
+      <aside
+        className={`chat-sidebar ${isSidebarOpen ? "sidebar-active" : ""}`}
+      >
         <div className="sidebar-card">
           <div className="sidebar-head">
             <div>
               <div className="eyebrow">История</div>
               <h2 className="sidebar-title">Мои чаты</h2>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: "flex", gap: "8px" }}>
               <button
                 className="primary-button compact-button"
                 onClick={() => {
@@ -577,7 +601,6 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
           </div>
         </div>
 
-
         <div className="sidebar-card">
           <div className="eyebrow">Профиль</div>
           <div className="profile-strip">
@@ -591,11 +614,11 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
 
       <div className="chat-main">
         <div className="chat-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
               className="ghost-button compact-button mobile-only"
               onClick={() => setIsSidebarOpen(true)}
-              style={{ minHeight: '42px', width: '42px', padding: 0 }}
+              style={{ minHeight: "42px", width: "42px", padding: 0 }}
             >
               ☰
             </button>
@@ -620,7 +643,13 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
             <div className="error-box chat-status-box">{error}</div>
           ) : null}
 
-          {loadingMessages ? (
+          {loadingChats ? (
+            <div className="chat-empty-state">Загружаю список чатов...</div>
+          ) : !selectedChatId ? (
+            <div className="chat-empty-state">
+              Выберите чат из списка слева или начните новый диалог.
+            </div>
+          ) : loadingMessages[selectedChatId] ? (
             <div className="chat-empty-state">Загружаю сообщения...</div>
           ) : selectedMessages.length > 0 ? (
             selectedMessages.map((message) => (
@@ -654,7 +683,15 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
                   <>
                     {message.image_url && (
                       <div className="chat-image-preview">
-                        <img src={message.image_url} alt="Прикрепленное фото" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '8px' }} />
+                        <img
+                          src={message.image_url}
+                          alt="Прикрепленное фото"
+                          style={{
+                            maxWidth: "100%",
+                            borderRadius: "8px",
+                            marginBottom: "8px",
+                          }}
+                        />
                       </div>
                     )}
                     <div className="chat-content-markdown">
@@ -692,9 +729,11 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   // Вызываем handleSubmit вручную, передавая синтетическое событие или просто вызывая логику
-                  // В нашем случае handleSubmit ожидает FormEvent<HTMLFormElement>. 
+                  // В нашем случае handleSubmit ожидает FormEvent<HTMLFormElement>.
                   // Но мы можем вынести логику отправки в отдельную функцию.
-                  void (event.currentTarget.form as HTMLFormElement).requestSubmit();
+                  void (
+                    event.currentTarget.form as HTMLFormElement
+                  ).requestSubmit();
                 }
               }}
               placeholder="Введите вопрос по физике, фрагмент задачи, условие или цитату из учебника..."
@@ -704,18 +743,31 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
             {imagePreview && (
               <div className="composer-image-preview">
                 <img src={imagePreview} alt="Preview" />
-                <button type="button" onClick={() => { setSelectedImage(null); setImagePreview(null); }} className="remove-image">&times;</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="remove-image"
+                >
+                  &times;
+                </button>
               </div>
             )}
             <div className="composer-actions">
               <div className="composer-attachments">
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="ghost-button compact-button">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="ghost-button compact-button"
+                >
                   📷 Фото
                 </button>
                 <input
                   type="file"
                   ref={fileInputRef}
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                   accept="image/*"
                   onChange={handleImageChange}
                 />

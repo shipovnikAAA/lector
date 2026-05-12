@@ -1,3 +1,9 @@
+# По умолчанию: Postgres, Qdrant, Rust (lector-ai) и Next (lector-web) — как раньше.
+#
+# Только инфра + бэкенд (без фронта в Docker), затем UI: cd frontend && npm run dev
+#   docker compose -f docker-compose.local.yml up --build pg-dev qdrant-dev lector-ai
+#
+# Фронт с hot reload в контейнере: docker compose -f docker-compose.dev.yml up --build
 services:
   pg-dev:
     image: postgres:17
@@ -68,6 +74,10 @@ services:
   lector-web:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     restart: always
     ports:
       - "3000:3000"

@@ -27,6 +27,14 @@ COPY . .
 ARG NEXTAUTH_SECRET
 ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 
+# NEXT_PUBLIC_* вшиваются в клиентский бандл на этапе `next build` — без них OAuth/Google не работает в Docker.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.

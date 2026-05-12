@@ -499,9 +499,72 @@ a.button:hover {
   display: block;
   font: inherit;
   min-width: 0;
-  padding: 14px;
+  padding: 14px 14px 46px;
+  position: relative;
   text-align: left;
   width: 100%;
+}
+
+.history-item-button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.history-item-delete {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  /* Перебиваем глобальный `button { min-height: 50px; padding: ... }` — иначе кнопка тянется */
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  padding: 0;
+  gap: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: inherit;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.history-item-delete span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.history-item-delete:hover {
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.history-item-delete:active {
+  transform: translateY(1px);
+}
+
+.history-item-delete:focus-visible {
+  outline: 2px solid rgba(125, 180, 255, 0.35);
+  outline-offset: 2px;
 }
 
 .history-item-active {

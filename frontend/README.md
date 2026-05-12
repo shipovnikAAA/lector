@@ -14,24 +14,33 @@ Next.js full-stack приложение с авторизацией через G
 
 ### Что поднимается
 
-Команда `docker compose -f docker-compose.local.yml up --build` стартует три сервиса:
+Команда `docker compose -f docker-compose.local.yml up --build` стартует **четыре** сервиса:
 
-- `pg-dev` - Postgres 17
-- `qdrant-dev` - векторное хранилище Qdrant
-- `lector-ai` - Rust backend из `ai/`
+- `pg-dev` — Postgres 17
+- `qdrant-dev` — векторное хранилище Qdrant
+- `lector-ai` — Rust backend из `ai/`
+- `lector-web` — production-сборка Next.js на порту `3000` (код в образе; после правок фронта нужен `--build`)
+
+Только Postgres + Qdrant + backend (без контейнера с фронтом), если хотите `npm run dev` в `./frontend`:
+
+```powershell
+docker compose -f docker-compose.local.yml up --build pg-dev qdrant-dev lector-ai
+```
 
 По умолчанию используются такие порты:
 
 - `5434` -> Postgres
-- `6333` и `6334` -> Qdrant
+- `6337` и `6338` -> Qdrant (REST и gRPC на хосте)
 - `6969` -> backend `lector-ai`
+- `3000` -> `lector-web`
 
 ### Что нужно перед запуском
 
 1. Установите Docker Desktop.
 2. Убедитесь, что Docker Engine запущен.
-3. Проверьте, что порты `5434`, `6333`, `6334` и `6969` не заняты.
-4. Убедитесь, что файл `.env.local` существует в корне проекта.
+3. Проверьте, что порты `5434`, `6337`, `6338`, `6969` и при полном стеке `3000` не заняты.
+4. В **корне репозитория** (рядом с `docker-compose.local.yml`) создайте файл `.env` с `NEXT_PUBLIC_SUPABASE_URL` и `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — они нужны **на этапе сборки** образа `lector-web` (иначе кнопка «Войти через Google» в контейнере не заработает).
+5. Для `npm run dev` в `frontend/` по-прежнему используйте `frontend/.env.local`.
 
 Минимально для связи фронтенда с backend в `.env.local` должны быть заданы:
 
@@ -60,7 +69,7 @@ LECTOR_AI_SHARED_SECRET=change-me
 - Миграции из `ai/migrations/` backend применяет сам при старте.
 - При первом запуске backend создает пользователя `admin` с паролем `admin`.
 - Для рабочих запросов к `/ask` нужен доступный AI-провайдер. Если `POLLINATIONS_API_KEY` не задан или провайдер недоступен, сервис может стартовать, но генерация ответов будет падать.
-- Эта инструкция проверена на текущем состоянии репозитория: `docker compose` действительно поднимает `pg-dev`, `qdrant-dev` и `lector-ai`.
+- Hot reload фронта в Docker: `docker compose -f docker-compose.dev.yml up --build` (там `Dockerfile.dev` и volume с `./frontend`).
 
 ### Запуск backend
 

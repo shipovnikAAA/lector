@@ -15,6 +15,7 @@ use auth::login;
 use auth::register;
 use chat::get_chat_messages;
 use chat::list_chats;
+use chat::delete_chat;
 use chat::update_chat;
 use formulas::{add_formula, delete_formula, list_formulas};
 use upload::handle_upload;
@@ -50,6 +51,7 @@ pub fn config_private(cfg: &mut ServiceConfig) {
             .wrap(auth_mw.clone())
             .route("", get().to(list_chats))
             .route("/{chat_id}/messages", get().to(get_chat_messages))
+            .route("/{chat_id}", delete().to(delete_chat))
             .route("", put().to(update_chat)),
     );
     cfg.service(

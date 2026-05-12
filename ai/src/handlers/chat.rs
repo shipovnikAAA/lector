@@ -106,3 +106,32 @@ pub async fn update_chat(
     Ok(HttpResponse::Ok().json(serde_json::json!({ "status": "updated" })))
 }
 
+pub async fn delete_chat(
+    pool: web::Data<PgPool>,
+    req: HttpRequest,
+    chat_id: web::Path<Uuid>,
+) -> actix_web::Result<impl Responder> {
+    let user = req
+        .extensions()
+        .get::<UserIdentity>()
+        .cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
+
+    let chat_id = chat_id.into_inner();
+
+    // Use runtime query (no `sqlx::query!`) so Docker builds don't require DATABASE_URL/sqlx prepare.
+    let result = sqlx::query("DELETE FROM chats WHERE id = $1 AND user_id = $2")
+        .bind(chat_id)
+        .bind(user.id)
+        .execute(pool.get_ref())
+        .await
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    if result.rows_affected() == 0 {
+        return Err(actix_web::error::ErrorNotFound("Chat not found"));
+    }
+
+    // Messages are deleted via ON DELETE CASCADE.
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "status": "deleted" })))
+}
+

@@ -170,6 +170,68 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
     }
   }, []);
 
+  const handleDeleteChat = useCallback(
+    async (chatId: string) => {
+      if (sending) {
+        return;
+      }
+
+      const accepted = window.confirm("Удалить этот чат? Сообщения тоже удалятся.");
+      if (!accepted) {
+        return;
+      }
+
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/ai/chats/${encodeURIComponent(chatId)}`,
+          {
+            method: "DELETE",
+            cache: "no-store",
+          },
+        );
+        const payload = (await response.json()) as {
+          status?: string;
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Не удалось удалить чат.");
+        }
+
+        let nextSelectedChatId: string | null = null;
+
+        setChats((current) => {
+          const next = current.filter((chat) => chat.id !== chatId);
+
+          if (selectedChatIdRef.current === chatId) {
+            nextSelectedChatId = next[0]?.id ?? null;
+          }
+
+          return next;
+        });
+        setMessagesByChat((current) => {
+          const next = { ...current };
+          delete next[chatId];
+          return next;
+        });
+
+        if (selectedChatIdRef.current === chatId) {
+          setSelectedChatId(nextSelectedChatId);
+          if (nextSelectedChatId) {
+            await loadMessages(nextSelectedChatId);
+          }
+        }
+      } catch (deleteError) {
+        setError(
+          deleteError instanceof Error ? deleteError.message : "Не удалось удалить чат.",
+        );
+      }
+    },
+    [loadMessages, sending],
+  );
+
   const loadChats = useCallback(
     async (preferredChatId?: string | null) => {
       setLoadingChats(true);
@@ -467,22 +529,41 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
               </div>
             ) : chats.length > 0 ? (
               chats.map((chat) => (
-                <button
+                <div
                   className={`history-item ${chat.id === selectedChatId ? "history-item-active" : ""}`}
                   key={chat.id}
-                  onClick={() => void handleSelectChat(chat.id)}
-                  type="button"
+                  role="group"
                 >
-                  <div className="history-item-row">
-                    <div className="history-item-title">{chat.name}</div>
-                    <span className="history-item-time">
-                      {formatTimeLabel(chat.created_at)}
-                    </span>
-                  </div>
-                  <p className="history-item-preview">
-                    {getPreview(messagesByChat[chat.id] ?? [])}
-                  </p>
-                </button>
+                  <button
+                    onClick={() => void handleSelectChat(chat.id)}
+                    type="button"
+                    className="history-item-button"
+                  >
+                    <div className="history-item-row">
+                      <div className="history-item-title">{chat.name}</div>
+                      <span className="history-item-time">
+                        {formatTimeLabel(chat.created_at)}
+                      </span>
+                    </div>
+                    <p className="history-item-preview">
+                      {getPreview(messagesByChat[chat.id] ?? [])}
+                    </p>
+                  </button>
+
+                  <button
+                    aria-label="Удалить чат"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void handleDeleteChat(chat.id);
+                    }}
+                    title="Удалить чат"
+                    type="button"
+                    className="history-item-delete"
+                  >
+                    <span aria-hidden="true">🗑</span>
+                  </button>
+                </div>
               ))
             ) : (
               <div className="history-placeholder">

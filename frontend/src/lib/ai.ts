@@ -39,6 +39,13 @@ function getAiBaseUrl() {
   return process.env.LECTOR_AI_URL?.trim() || DEFAULT_AI_URL;
 }
 
+function connectionHint(baseUrl: string) {
+  if (baseUrl.includes("lector-ai")) {
+    return " Для `npm run dev` на компьютере задайте в frontend/.env.local: LECTOR_AI_URL=http://127.0.0.1:6969 (имя lector-ai резолвится только внутри Docker).";
+  }
+  return " Проверьте, что backend запущен: docker compose -f docker-compose.local.yml up --build";
+}
+
 function buildAiCredentials(userId: string) {
   const secret = process.env.LECTOR_AI_SHARED_SECRET?.trim() || "local-dev-ai-secret";
 
@@ -49,16 +56,26 @@ function buildAiCredentials(userId: string) {
 }
 
 async function aiFetch(path: string, init?: RequestInit) {
-  const response = await fetch(`${getAiBaseUrl()}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {})
-    },
-    cache: "no-store"
-  });
+  const base = getAiBaseUrl();
+  const url = `${base}${path}`;
 
-  return response;
+  try {
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {})
+      },
+      cache: "no-store"
+    });
+
+    return response;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Не удалось связаться с AI-сервером (${url}): ${reason}.${connectionHint(base)}`,
+    );
+  }
 }
 
 async function ensureAiToken() {
@@ -146,6 +163,22 @@ export async function listAiMessages(chatId: string) {
   }
 
   return (await response.json()) as AiMessage[];
+}
+
+export async function deleteAiChat(chatId: string) {
+  const token = await ensureAiToken();
+  const response = await aiFetch(`/chat/${chatId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readAiError(response));
+  }
+
+  return (await response.json()) as { status: string };
 }
 
 export async function askAi(question: string, chatId?: string | null) {

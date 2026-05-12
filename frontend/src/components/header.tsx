@@ -21,9 +21,7 @@ export async function Header() {
         <Link className="button ghost-button" href="/chat">
           Чат
         </Link>
-        <Link className="button ghost-button" href="/formulas">
-          Формулы
-        </Link>
+
         {user ? (
           <>
             <Link className="button ghost-button" href="/dashboard">

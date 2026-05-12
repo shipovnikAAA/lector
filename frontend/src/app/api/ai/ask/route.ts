@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     chatId?: string | null;
     question?: string;
+    image_url?: string | null;
   };
 
   const question = body.question?.trim();
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await askAi(question, body.chatId);
+    const result = await askAi(question, body.chatId, body.image_url);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI service is unavailable";

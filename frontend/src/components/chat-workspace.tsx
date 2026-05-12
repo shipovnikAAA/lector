@@ -350,6 +350,7 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
       created_at: new Date().toISOString(),
       id: `user-${Date.now()}`,
       role: "user",
+      image_url: imagePreview, // Используем preview для мгновенного отображения
     };
     const optimisticAssistantMessage: ChatMessage = {
       chat_id: optimisticChatId,
@@ -426,7 +427,10 @@ export function ChatWorkspace({ userName }: ChatWorkspaceProps) {
         role: "assistant",
       };
       const optimisticMessages = messagesByChat[optimisticChatId] ?? [];
-      const normalizedUserMessage = optimisticUserMessage;
+      const normalizedUserMessage: ChatMessage = {
+        ...optimisticUserMessage,
+        image_url: imageUrl || optimisticUserMessage.image_url,
+      };
       const nextMessages = [
         ...optimisticMessages.filter(
           (message) =>

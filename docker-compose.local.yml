@@ -44,6 +44,7 @@ services:
       - "${PORT:-6969}:${PORT:-6969}"
     volumes:
       - fastembed_cache:/root/.cache
+      - uploads_data:/app/uploads
     depends_on:
       pg-dev:
         condition: service_healthy
@@ -111,3 +112,4 @@ volumes:
   qdrant_storage:
   postgres_data:
   fastembed_cache:
+  uploads_data:

@@ -78,7 +78,7 @@ async function aiFetch(path: string, init?: RequestInit) {
   }
 }
 
-async function ensureAiToken() {
+export async function ensureAiToken() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -181,12 +181,13 @@ export async function deleteAiChat(chatId: string) {
   return (await response.json()) as { status: string };
 }
 
-export async function askAi(question: string, chatId?: string | null) {
+export async function askAi(question: string, chatId?: string | null, imageUrl?: string | null) {
   const token = await ensureAiToken();
   const response = await aiFetch("/ask", {
     body: JSON.stringify({
       chat_id: chatId ?? null,
-      question
+      question,
+      image_url: imageUrl ?? null
     }),
     headers: {
       Authorization: `Bearer ${token}`

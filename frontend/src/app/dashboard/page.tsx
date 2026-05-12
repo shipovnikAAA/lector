@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 
 import { AccountNameEditor } from "@/components/account-name-editor";
 import { Header } from "@/components/header";
-import { getCurrentProfile, getCurrentUser, syncProfileFromUser } from "@/lib/profile";
+import {
+  getCurrentProfile,
+  getCurrentUser,
+  syncProfileFromUser,
+} from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 
 const plans = [
@@ -14,22 +18,34 @@ const plans = [
     name: "Free",
     price: "0 ₽",
     description: "Для знакомства с продуктом и первых задач.",
-    points: ["Ограниченное число запросов", "Базовые объяснения", "История чатов"]
+    points: [
+      "Ограниченное число запросов",
+      "Базовые объяснения",
+      "История чатов",
+    ],
   },
   {
     current: false,
     name: "Student",
     price: "399 ₽ / мес",
     description: "Для регулярной учёбы и домашних заданий.",
-    points: ["Больше решений в месяц", "Пошаговые объяснения", "Приоритетная обработка"]
+    points: [
+      "Больше решений в месяц",
+      "Пошаговые объяснения",
+      "Приоритетная обработка",
+    ],
   },
   {
     current: false,
     name: "Pro",
     price: "799 ₽ / мес",
     description: "Для интенсивной подготовки и сложных тем.",
-    points: ["Расширенные лимиты", "Подробные разборы", "Будущие премиум-режимы"]
-  }
+    points: [
+      "Расширенные лимиты",
+      "Подробные разборы",
+      "Будущие премиум-режимы",
+    ],
+  },
 ];
 
 async function updateProfileName(formData: FormData) {
@@ -48,7 +64,7 @@ async function updateProfileName(formData: FormData) {
 
   const supabase = await createClient();
   const {
-    data: { user }
+    data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
@@ -58,7 +74,7 @@ async function updateProfileName(formData: FormData) {
   const { error } = await supabase
     .from("profiles")
     .update({
-      full_name: fullName
+      full_name: fullName,
     })
     .eq("id", user.id);
 
@@ -71,7 +87,7 @@ async function updateProfileName(formData: FormData) {
 }
 
 export default async function DashboardPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
@@ -99,7 +115,9 @@ export default async function DashboardPage({
           <div className="eyebrow">Личный кабинет</div>
           <h1 className="account-title">Профиль пользователя</h1>
 
-          {saved ? <p className="status-box success-box">Имя сохранено.</p> : null}
+          {saved ? (
+            <p className="status-box success-box">Имя сохранено.</p>
+          ) : null}
           {error ? (
             <p className="status-box error-box">
               {error === "empty_name"
@@ -134,23 +152,11 @@ export default async function DashboardPage({
 
               <div className="account-field">
                 <span className="account-label">Почта</span>
-                <span className="account-value">{profile.email ?? "Не указана"}</span>
+                <span className="account-value">
+                  {profile.email ?? "Не указана"}
+                </span>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="account-card">
-          <div className="eyebrow">Обучение</div>
-          <h2 className="account-section-title">Библиотека формул</h2>
-          <p className="section-text">
-            Просматривайте, добавляйте и удаляйте формулы для 9 и 10 классов. 
-            Ваш персональный справочник для решения задач.
-          </p>
-          <div style={{ marginTop: '20px' }}>
-            <Link className="button primary-button" href="/formulas" style={{ display: 'inline-block' }}>
-              Перейти к формулам
-            </Link>
           </div>
         </div>
 
@@ -170,7 +176,9 @@ export default async function DashboardPage({
               >
                 <div className="plan-head">
                   <div className="plan-name">{plan.name}</div>
-                  {plan.current ? <span className="plan-badge">Текущий план</span> : null}
+                  {plan.current ? (
+                    <span className="plan-badge">Текущий план</span>
+                  ) : null}
                 </div>
                 <div className="plan-price">{plan.price}</div>
                 <p className="plan-description">{plan.description}</p>
@@ -186,7 +194,9 @@ export default async function DashboardPage({
                   disabled
                   type="button"
                 >
-                  {plan.current ? "Выбран по умолчанию" : "Скоро будет доступно"}
+                  {plan.current
+                    ? "Выбран по умолчанию"
+                    : "Скоро будет доступно"}
                 </button>
               </article>
             ))}
